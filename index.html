@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>簡單的牌卡盒</title>
+<style>
+  /* ===== Themes ===== */
+  html[data-theme="dark"]{
+    --bg-1:#0d0a1f;
+    --bg-2:#1a1538;
+    --accent:#d4af37;
+    --accent-soft:#e8c66b;
+    --text:#f0e9d6;
+    --muted:#9b94b8;
+    --panel-bg:rgba(26,21,56,0.5);
+    --panel-border:rgba(212,175,55,0.2);
+    --inner-bg:rgba(13,10,31,0.6);
+    --card-back:linear-gradient(135deg,#3a2a6b 0%,#1a1538 50%,#3a2a6b 100%);
+    --card-back-border:#d4af37;
+    --card-back-inner:rgba(212,175,55,0.5);
+    --back-symbol:#d4af37;
+    --glow:rgba(212,175,55,0.45);
+    --shadow:0 10px 30px rgba(0,0,0,0.5);
+    --stars-opacity:0.6;
+    --pool-item-bg:#1a1538;
+  }
+  html[data-theme="light"]{
+    --bg-1:#d4cdbe;
+    --bg-2:#e2dcce;
+    --accent:#6b4d10;
+    --accent-soft:#8a6418;
+    --text:#2d1f4a;
+    --muted:#6a6080;
+    --panel-bg:rgba(232,226,213,0.65);
+    --panel-border:rgba(107,77,16,0.28);
+    --inner-bg:rgba(232,226,213,0.85);
+    --card-back:linear-gradient(135deg,#5a4794 0%,#3a2a6b 50%,#5a4794 100%);
+    --card-back-border:#c79b3f;
+    --card-back-inner:rgba(231,212,150,0.5);
+    --back-symbol:#e8c66b;
+    --glow:rgba(107,77,16,0.35);
+    --shadow:0 8px 22px rgba(40,32,55,0.12);
+    --stars-opacity:0;
+    --pool-item-bg:#ece5d4;
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:"Noto Sans TC","Helvetica Neue",sans-serif;
+    background:radial-gradient(ellipse at top,var(--bg-2) 0%,var(--bg-1) 70%);
+    color:var(--text);
+    min-height:100vh;
+    overflow-x:hidden;
+    position:relative;
+    transition:background .4s ease, color .4s ease;
+  }
+  body::before{
+    content:"";
+    position:fixed;inset:0;
+    background-image:
+      radial-gradient(2px 2px at 20% 30%,rgba(255,255,255,0.6),transparent),
+      radial-gradient(1px 1px at 60% 70%,rgba(255,255,255,0.5),transparent),
+      radial-gradient(1px 1px at 80% 20%,rgba(255,255,255,0.4),transparent),
+      radial-gradient(2px 2px at 40% 80%,rgba(255,255,255,0.5),transparent),
+      radial-gradient(1px 1px at 10% 60%,rgba(255,255,255,0.4),transparent),
+      radial-gradient(1px 1px at 90% 50%,rgba(255,255,255,0.5),transparent);
+    background-size:200% 200%;
+    pointer-events:none;
+    z-index:0;
+    opacity:var(--stars-opacity);
+    transition:opacity .4s ease;
+  }
+
+  header{
+    text-align:center;
+    padding:32px 16px 16px;
+    position:relative;
+    z-index:1;
+  }
+  header h1{
+    font-size:30px;
+    font-weight:600;
+    letter-spacing:3px;
+    background:linear-gradient(90deg,var(--accent),var(--accent-soft),var(--accent));
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+  }
+  header p{
+    margin-top:8px;
+    color:var(--muted);
+    font-size:13px;
+    letter-spacing:2px;
+  }
+  .theme-toggle{
+    position:absolute;
+    top:24px;right:24px;
+    background:transparent;
+    border:1px solid var(--panel-border);
+    color:var(--accent-soft);
+    width:42px;height:42px;
+    border-radius:50%;
+    cursor:pointer;
+    font-size:18px;
+    display:flex;align-items:center;justify-content:center;
+    transition:all .25s;
+    z-index:2;
+  }
+  .theme-toggle:hover{
+    border-color:var(--accent);
+    background:rgba(212,175,55,0.08);
+    transform:rotate(20deg);
+  }
+
+  main{
+    max-width:1100px;
+    margin:0 auto;
+    padding:20px 16px 30px;
+    position:relative;
+    z-index:1;
+  }
+  .panel{
+    background:var(--panel-bg);
+    border:1px solid var(--panel-border);
+    border-radius:14px;
+    padding:18px;
+    margin-bottom:20px;
+    backdrop-filter:blur(8px);
+    transition:background .4s ease, border-color .4s ease;
+  }
+  .controls-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:12px;
+    align-items:center;
+    justify-content:center;
+  }
+  .controls-row + .controls-row{
+    margin-top:14px;
+  }
+  .spread-group{
+    display:flex;
+    gap:8px;
+    background:var(--inner-bg);
+    padding:6px;
+    border-radius:10px;
+    border:1px solid var(--panel-border);
+  }
+  .spread-btn{
+    background:transparent;
+    border:none;
+    color:var(--muted);
+    padding:8px 16px;
+    border-radius:7px;
+    cursor:pointer;
+    font-size:14px;
+    letter-spacing:1px;
+    transition:all .25s;
+    font-family:inherit;
+  }
+  .spread-btn.active{
+    background:linear-gradient(135deg,var(--accent),var(--accent-soft));
+    color:#1a1538;
+    font-weight:600;
+    box-shadow:0 0 12px var(--glow);
+  }
+  html[data-theme="light"] .spread-btn.active{
+    color:#fff;
+  }
+  .spread-btn:hover:not(.active){
+    color:var(--text);
+    background:rgba(212,175,55,0.1);
+  }
+  .draw-btn{
+    background:linear-gradient(135deg,var(--accent),var(--accent-soft));
+    color:#1a1538;
+    border:none;
+    padding:14px 48px;
+    border-radius:10px;
+    font-size:16px;
+    font-weight:600;
+    letter-spacing:4px;
+    cursor:pointer;
+    transition:all .25s;
+    font-family:inherit;
+    box-shadow:0 0 20px var(--glow);
+  }
+  html[data-theme="light"] .draw-btn{
+    color:#fff8e8;
+  }
+  .draw-btn:hover{
+    transform:translateY(-2px);
+    box-shadow:0 4px 28px var(--glow);
+  }
+  .draw-btn:disabled{
+    opacity:0.4;
+    cursor:not-allowed;
+    transform:none;
+    box-shadow:none;
+  }
+  .ghost-btn{
+    background:transparent;
+    color:var(--accent-soft);
+    border:1px solid var(--panel-border);
+    padding:8px 16px;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:13px;
+    transition:all .25s;
+    font-family:inherit;
+  }
+  .ghost-btn:hover{
+    background:rgba(212,175,55,0.1);
+    border-color:var(--accent);
+  }
+
+  /* Stage */
+  .stage{
+    min-height:420px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:28px;
+    flex-wrap:nowrap;
+    padding:30px 10px;
+    overflow-x:auto;
+  }
+  .empty-hint{
+    color:var(--muted);
+    font-size:14px;
+    letter-spacing:2px;
+    text-align:center;
+  }
+
+  /* Card */
+  .card-wrap{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:24px;
+    flex-shrink:0;
+  }
+  .card{
+    height:280px;
+    position:relative;
+    cursor:pointer;
+    animation:float 4s ease-in-out infinite;
+  }
+  @keyframes float{
+    0%,100%{transform:translateY(0)}
+    50%{transform:translateY(-12px)}
+  }
+  .card .face{
+    position:absolute;
+    inset:0;
+    border-radius:14px;
+    overflow:hidden;
+    box-shadow:var(--shadow), 0 0 0 1px var(--panel-border);
+    transition:box-shadow .8s ease, opacity .55s ease;
+  }
+  .card .front{
+    opacity:0;
+  }
+  .card.flipped .back{
+    opacity:0;
+  }
+  .card.flipped .front{
+    opacity:1;
+  }
+  .card .back{
+    background:var(--card-back);
+    background-size:cover;
+    background-position:center;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border:2px solid var(--card-back-border);
+  }
+  .card .back.has-image::before,
+  .card .back.has-image .back-symbol{
+    display:none;
+  }
+  .card .back::before{
+    content:"";
+    position:absolute;inset:8px;
+    border:1px solid var(--card-back-inner);
+    border-radius:8px;
+  }
+  .card .back-symbol{
+    width:60%;
+    height:60%;
+    background:radial-gradient(circle,var(--back-symbol) 0%,transparent 70%);
+    opacity:0.5;
+    border-radius:50%;
+    position:relative;
+  }
+  .card .back-symbol::after{
+    content:"✦";
+    position:absolute;
+    inset:0;
+    display:flex;align-items:center;justify-content:center;
+    font-size:60px;
+    color:var(--back-symbol);
+    text-shadow:0 0 20px var(--glow);
+  }
+  .card .front{
+    background:#1a1538;
+  }
+  html[data-theme="light"] .card .front{
+    background:#fff8e8;
+  }
+  .card .front img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+  }
+  .card-label{
+    font-size:13px;
+    color:var(--accent-soft);
+    letter-spacing:3px;
+    height:18px;
+    animation:labelIn .55s ease both;
+  }
+  @keyframes labelIn{
+    from{opacity:0; transform:translateY(-4px)}
+    to{opacity:1; transform:translateY(0)}
+  }
+  .card-name{
+    font-size:14px;
+    color:var(--text);
+    text-align:center;
+    max-width:240px;
+    word-break:break-all;
+    height:20px;
+    opacity:0;
+    transition:opacity .4s .25s;
+    margin-top:4px;
+  }
+  .card-wrap.revealed .card-name{opacity:1}
+
+  /* Pool */
+  .pool-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:14px;
+    flex-wrap:wrap;
+    gap:10px;
+  }
+  .pool-title-row{
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .pool-toggle{
+    background:transparent;
+    border:none;
+    color:var(--accent-soft);
+    cursor:pointer;
+    font-size:22px;
+    line-height:1;
+    padding:2px 8px;
+    border-radius:6px;
+    transition:transform .3s ease, background .25s;
+    font-family:inherit;
+  }
+  .pool-toggle:hover{
+    background:rgba(212,175,55,0.08);
+  }
+  .pool-toggle.collapsed{
+    transform:rotate(-90deg);
+  }
+  .pool-collapsible{
+    overflow:hidden;
+    max-height:1200px;
+    opacity:1;
+    transition:max-height .45s ease, opacity .35s ease, margin-top .35s ease;
+  }
+  .pool-collapsible.collapsed{
+    max-height:0;
+    opacity:0;
+    margin-top:-14px;
+  }
+  .pool-title{
+    font-size:16px;
+    color:var(--accent-soft);
+    letter-spacing:2px;
+  }
+  .pool-count{
+    color:var(--muted);
+    font-size:13px;
+    margin-left:8px;
+  }
+  .pool-actions{display:flex;gap:8px;flex-wrap:wrap}
+  .pool-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(90px,1fr));
+    gap:10px;
+    max-height:300px;
+    overflow-y:auto;
+    padding:4px;
+  }
+  .pool-item{
+    position:relative;
+    aspect-ratio:2/3;
+    border-radius:8px;
+    overflow:hidden;
+    border:1px solid var(--panel-border);
+    background:var(--pool-item-bg);
+  }
+  .pool-item img{
+    width:100%;height:100%;
+    object-fit:cover;
+  }
+  .pool-item .name{
+    position:absolute;
+    bottom:0;left:0;right:0;
+    background:linear-gradient(transparent,rgba(0,0,0,0.85));
+    color:#fff;
+    font-size:10px;
+    padding:14px 4px 4px;
+    text-align:center;
+    word-break:break-all;
+    line-height:1.2;
+  }
+  .pool-item .remove{
+    position:absolute;
+    top:4px;right:4px;
+    width:22px;height:22px;
+    border-radius:50%;
+    background:rgba(0,0,0,0.7);
+    color:#fff;
+    border:none;
+    cursor:pointer;
+    font-size:14px;
+    line-height:1;
+    display:flex;align-items:center;justify-content:center;
+    opacity:0;
+    transition:opacity .2s;
+  }
+  .pool-item:hover .remove{opacity:1}
+  .pool-empty{
+    color:var(--muted);
+    text-align:center;
+    padding:30px;
+    font-size:13px;
+  }
+
+  input[type="file"]{display:none}
+
+  /* Sparkles */
+  .sparkle{
+    position:fixed;
+    width:8px;height:8px;
+    background:#f5c842;
+    border-radius:50%;
+    pointer-events:none;
+    box-shadow:0 0 12px #f5c842, 0 0 24px #ffe082;
+    z-index:50;
+  }
+
+  /* Theme transition overlay */
+  .theme-overlay{
+    position:fixed;
+    inset:0;
+    background:#070512;
+    opacity:0;
+    pointer-events:none;
+    z-index:200;
+    transition:opacity .9s ease;
+  }
+  .theme-overlay.show{
+    opacity:1;
+    transition-duration:.5s;
+  }
+
+  /* Toast */
+  .toast{
+    position:fixed;
+    bottom:20px;left:50%;
+    transform:translateX(-50%);
+    background:var(--inner-bg);
+    border:1px solid var(--accent);
+    color:var(--text);
+    padding:10px 20px;
+    border-radius:8px;
+    font-size:14px;
+    z-index:100;
+    opacity:0;
+    transition:opacity .3s;
+    pointer-events:none;
+    backdrop-filter:blur(8px);
+  }
+  .toast.show{opacity:1}
+
+  /* Footer */
+  footer{
+    text-align:center;
+    padding:24px 16px 40px;
+    position:relative;
+    z-index:1;
+    color:var(--muted);
+    font-size:12px;
+    letter-spacing:2px;
+  }
+  footer .notice{
+    color:var(--accent-soft);
+    font-size:13px;
+    letter-spacing:3px;
+    margin-bottom:8px;
+  }
+  footer .copy{
+    opacity:0.7;
+    font-size:11px;
+    letter-spacing:1.5px;
+  }
+
+  @media (max-width:600px){
+    .card{height:220px}
+    .card .back-symbol::after{font-size:46px}
+    header h1{font-size:22px;letter-spacing:2px}
+    .stage{gap:18px;min-height:340px}
+    .theme-toggle{top:16px;right:16px;width:36px;height:36px;font-size:16px}
+  }
+</style>
+</head>
+<body>
+<header>
+  <button class="theme-toggle" id="themeToggle" title="切換主題">☀</button>
+  <h1>✦ 簡單的牌卡盒 ✦</h1>
+  <p>- 實現抽卡自由 -</p>
+</header>
+
+<main>
+  <div class="panel">
+    <div class="controls-row">
+      <div class="spread-group" id="spreadGroup">
+        <button class="spread-btn active" data-count="1">抽 1 張</button>
+        <button class="spread-btn" data-count="2">抽 2 張</button>
+        <button class="spread-btn" data-count="3">抽 3 張</button>
+      </div>
+    </div>
+    <div class="controls-row">
+      <button class="draw-btn" id="drawBtn">抽　牌</button>
+    </div>
+  </div>
+
+  <div class="stage" id="stage">
+    <div class="empty-hint">請先在下方加入你的卡片，然後點「抽牌」</div>
+  </div>
+
+  <div class="panel">
+    <div class="pool-header">
+      <div class="pool-title-row">
+        <button class="pool-toggle" id="poolToggle" title="收合">▾</button>
+        <span class="pool-title">牌組</span>
+        <span class="pool-count" id="poolCount">0 張</span>
+      </div>
+      <div class="pool-actions">
+        <button class="ghost-btn" id="uploadBtn">＋ 加入圖片</button>
+        <button class="ghost-btn" id="backBtn">自訂牌背</button>
+        <button class="ghost-btn" id="backResetBtn" style="display:none">移除自訂牌背</button>
+        <button class="ghost-btn" id="exportBtn">匯出設定</button>
+        <button class="ghost-btn" id="importBtn">匯入設定</button>
+        <button class="ghost-btn" id="clearBtn">清空</button>
+        <input type="file" id="fileInput" accept="image/*" multiple>
+        <input type="file" id="backInput" accept="image/*">
+        <input type="file" id="importInput" accept="application/json">
+      </div>
+    </div>
+    <div class="pool-collapsible" id="poolCollapsible">
+      <div class="pool-grid" id="poolGrid"></div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="notice">✦ 關閉網頁即清除牌組資料 ✦</div>
+  <div class="copy">© UTONEEE 2026</div>
+</footer>
+
+<div class="theme-overlay" id="themeOverlay"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  // 共享版：不持久化牌組與牌背（每次開啟為空）；保留主題與收合偏好
+  const THEME_KEY   = "gacha_theme_v1";
+  const POOL_COLLAPSE_KEY = "gacha_pool_collapsed_v1";
+  const POSITION_LABELS = {
+    1: ["啟示"],
+    2: ["此刻", "未來"],
+    3: ["過去", "現在", "未來"]
+  };
+
+  let pool = [];
+  let customBack = null;
+  let drawCount = 1;
+
+  const $ = id => document.getElementById(id);
+  const stage = $("stage");
+  const poolGrid = $("poolGrid");
+  const poolCount = $("poolCount");
+  const drawBtn = $("drawBtn");
+  const toast = $("toast");
+  const backResetBtn = $("backResetBtn");
+
+  function showToast(msg){
+    toast.textContent = msg;
+    toast.classList.add("show");
+    clearTimeout(toast._t);
+    toast._t = setTimeout(()=>toast.classList.remove("show"), 2200);
+  }
+
+  // ===== Helpers =====
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+    }[c]));
+  }
+  function fileToDataURL(file){
+    return new Promise((resolve,reject)=>{
+      const r = new FileReader();
+      r.onload = () => resolve(r.result);
+      r.onerror = reject;
+      r.readAsDataURL(file);
+    });
+  }
+  function imageRatio(dataUrl){
+    return new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => resolve(img.naturalWidth / img.naturalHeight);
+      img.onerror = () => resolve(2/3);
+      img.src = dataUrl;
+    });
+  }
+
+  // ===== Pool =====
+  function renderPool(){
+    poolCount.textContent = pool.length + " 張";
+    if(pool.length === 0){
+      poolGrid.innerHTML = '<div class="pool-empty" style="grid-column:1/-1">尚未加入任何卡片</div>';
+      return;
+    }
+    poolGrid.innerHTML = "";
+    pool.forEach(card => {
+      const el = document.createElement("div");
+      el.className = "pool-item";
+      el.innerHTML = `
+        <img src="${card.src}" alt="">
+        <div class="name">${escapeHtml(card.name)}</div>
+        <button class="remove" data-id="${card.id}" title="移除">×</button>
+      `;
+      poolGrid.appendChild(el);
+    });
+  }
+
+  async function addFiles(files){
+    const items = Array.from(files);
+    if(items.length === 0) return;
+    let added = 0;
+    for(const f of items){
+      if(!f.type.startsWith("image/")) continue;
+      try{
+        const dataUrl = await fileToDataURL(f);
+        const ratio = await imageRatio(dataUrl);
+        pool.push({
+          id: Date.now() + "_" + Math.random().toString(36).slice(2,8),
+          name: f.name.replace(/\.[^.]+$/,""),
+          src: dataUrl,
+          ratio: ratio
+        });
+        added++;
+      }catch(e){}
+    }
+    if(added>0){
+      renderPool();
+      showToast(`已加入 ${added} 張卡片`);
+    }
+  }
+
+  function pickRandom(n){
+    if(pool.length === 0) return [];
+    if(n <= pool.length){
+      const avail = pool.map((_,i)=>i);
+      const out = [];
+      for(let i=0;i<n;i++){
+        const j = Math.floor(Math.random()*avail.length);
+        out.push(pool[avail.splice(j,1)[0]]);
+      }
+      return out;
+    }
+    const out = [];
+    for(let i=0;i<n;i++) out.push(pool[Math.floor(Math.random()*pool.length)]);
+    return out;
+  }
+
+  // ===== Card rendering =====
+  function cardHeight(){
+    return window.innerWidth < 600 ? 220 : 280;
+  }
+  function buildCard(card, label){
+    const wrap = document.createElement("div");
+    wrap.className = "card-wrap";
+    const ratio = card.ratio || (2/3);
+    const h = cardHeight();
+    const w = Math.round(h * ratio);
+    const backStyle = customBack
+      ? `style="background-image:url('${customBack}')"`
+      : "";
+    const backClass = customBack ? "face back has-image" : "face back";
+    wrap.innerHTML = `
+      <div class="card-label">${label || ""}</div>
+      <div class="card" style="width:${w}px;height:${h}px">
+        <div class="${backClass}" ${backStyle}><div class="back-symbol"></div></div>
+        <div class="face front"><img src="${card.src}" alt=""></div>
+      </div>
+      <div class="card-name">${escapeHtml(card.name)}</div>
+    `;
+    return wrap;
+  }
+
+  // ===== Sparkles =====
+  function spawnSparkles(cardEl){
+    const rect = cardEl.getBoundingClientRect();
+    const cx = rect.left + rect.width/2;
+    const cy = rect.top + rect.height/2;
+    const reach = Math.max(rect.width, rect.height) * 0.7;
+    const count = 22;
+    for(let i=0;i<count;i++){
+      const s = document.createElement("div");
+      s.className = "sparkle";
+      s.style.left = cx + "px";
+      s.style.top = cy + "px";
+      const size = 4 + Math.random()*8;
+      s.style.width = size + "px";
+      s.style.height = size + "px";
+      document.body.appendChild(s);
+      const angle = Math.random()*Math.PI*2;
+      const dist = reach * (0.4 + Math.random()*0.7);
+      const dx = Math.cos(angle)*dist;
+      const dy = Math.sin(angle)*dist;
+      const duration = 1800 + Math.random()*900;
+      const delay = Math.random()*250;
+      s.animate([
+        {transform:"translate(-50%,-50%) scale(0.4)", opacity:0},
+        {transform:"translate(-50%,-50%) scale(1.2)", opacity:1, offset:0.18},
+        {transform:`translate(calc(-50% + ${dx*0.6}px), calc(-50% + ${dy*0.6}px)) scale(1)`, opacity:0.9, offset:0.55},
+        {transform:`translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(0.2)`, opacity:0}
+      ],{
+        duration: duration,
+        delay: delay,
+        easing:"cubic-bezier(.2,.6,.3,1)",
+        fill:"forwards"
+      });
+      setTimeout(()=> s.remove(), duration + delay + 100);
+    }
+  }
+
+  // ===== Draw（手動翻牌） =====
+  function draw(){
+    if(pool.length === 0){
+      showToast("請先加入卡片到牌組");
+      return;
+    }
+    stage.innerHTML = "";
+    const picked = pickRandom(drawCount);
+    const labels = POSITION_LABELS[drawCount] || [];
+
+    picked.forEach((card,idx)=>{
+      const wrap = buildCard(card, labels[idx]);
+      stage.appendChild(wrap);
+      const cardEl = wrap.querySelector(".card");
+      cardEl.addEventListener("click", function flip(){
+        if(cardEl.classList.contains("flipped")) return;
+        cardEl.classList.add("flipped");
+        wrap.classList.add("revealed");
+        spawnSparkles(cardEl);
+        cardEl.removeEventListener("click", flip);
+      });
+    });
+  }
+
+  // ===== Theme =====
+  function applyTheme(theme){
+    document.documentElement.setAttribute("data-theme", theme);
+    $("themeToggle").textContent = theme === "dark" ? "☀" : "☾";
+    try{ localStorage.setItem(THEME_KEY, theme); }catch(e){}
+  }
+  function toggleTheme(){
+    const overlay = $("themeOverlay");
+    const cur = document.documentElement.getAttribute("data-theme");
+    const next = cur === "dark" ? "light" : "dark";
+    overlay.classList.add("show");
+    setTimeout(()=>{
+      applyTheme(next);
+      requestAnimationFrame(()=>{
+        requestAnimationFrame(()=>{
+          overlay.classList.remove("show");
+        });
+      });
+    }, 520);
+  }
+
+  // ===== Card back =====
+  function updateBackBtnVisibility(){
+    backResetBtn.style.display = customBack ? "" : "none";
+  }
+
+  // ===== Pool collapse =====
+  function setPoolCollapse(collapsed){
+    const toggle = $("poolToggle");
+    const wrap = $("poolCollapsible");
+    if(collapsed){
+      toggle.classList.add("collapsed");
+      wrap.classList.add("collapsed");
+      toggle.title = "展開";
+    }else{
+      toggle.classList.remove("collapsed");
+      wrap.classList.remove("collapsed");
+      toggle.title = "收合";
+    }
+    try{ localStorage.setItem(POOL_COLLAPSE_KEY, collapsed ? "1" : "0"); }catch(e){}
+  }
+  function togglePoolCollapse(){
+    const wrap = $("poolCollapsible");
+    setPoolCollapse(!wrap.classList.contains("collapsed"));
+  }
+
+  // ===== Events =====
+  $("spreadGroup").addEventListener("click", e => {
+    const btn = e.target.closest(".spread-btn");
+    if(!btn) return;
+    document.querySelectorAll(".spread-btn").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+    drawCount = parseInt(btn.dataset.count, 10);
+  });
+  drawBtn.addEventListener("click", draw);
+
+  $("uploadBtn").addEventListener("click", ()=> $("fileInput").click());
+  $("fileInput").addEventListener("change", e => {
+    addFiles(e.target.files);
+    e.target.value = "";
+  });
+
+  $("backBtn").addEventListener("click", ()=> $("backInput").click());
+  $("backInput").addEventListener("change", async e => {
+    const f = e.target.files[0];
+    if(!f) return;
+    if(!f.type.startsWith("image/")){ showToast("請選擇圖片檔"); return; }
+    try{
+      customBack = await fileToDataURL(f);
+      updateBackBtnVisibility();
+      showToast("已套用自訂牌背");
+    }catch(err){ showToast("讀取失敗"); }
+    e.target.value = "";
+  });
+  backResetBtn.addEventListener("click", ()=>{
+    customBack = null;
+    updateBackBtnVisibility();
+    showToast("已恢復預設牌背");
+  });
+
+  $("clearBtn").addEventListener("click", ()=>{
+    if(pool.length === 0) return;
+    if(confirm("確定要清空整個牌組嗎？")){
+      pool = [];
+      renderPool();
+      showToast("已清空");
+    }
+  });
+  poolGrid.addEventListener("click", e => {
+    const btn = e.target.closest(".remove");
+    if(!btn) return;
+    const id = btn.dataset.id;
+    pool = pool.filter(c => c.id !== id);
+    renderPool();
+  });
+
+  $("exportBtn").addEventListener("click", ()=>{
+    if(pool.length === 0 && !customBack){ showToast("沒有可匯出的內容"); return; }
+    const data = { pool: pool, back: customBack };
+    const blob = new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "gacha_cards.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+  $("importBtn").addEventListener("click", ()=> $("importInput").click());
+  $("importInput").addEventListener("change", async e => {
+    const file = e.target.files[0];
+    if(!file) return;
+    try{
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if(Array.isArray(data)){
+        pool = data.filter(x => x && x.src && x.name);
+      }else{
+        pool = (data.pool || []).filter(x => x && x.src && x.name);
+        customBack = data.back || null;
+      }
+      for(const c of pool){
+        if(!c.ratio) c.ratio = await imageRatio(c.src);
+      }
+      renderPool();
+      updateBackBtnVisibility();
+      showToast(`已匯入 ${pool.length} 張`);
+    }catch(err){
+      showToast("匯入失敗：檔案格式錯誤");
+    }
+    e.target.value = "";
+  });
+
+  $("themeToggle").addEventListener("click", toggleTheme);
+  $("poolToggle").addEventListener("click", togglePoolCollapse);
+
+  // Drag & drop
+  window.addEventListener("dragover", e => e.preventDefault());
+  window.addEventListener("drop", e => {
+    e.preventDefault();
+    if(e.dataTransfer.files.length > 0) addFiles(e.dataTransfer.files);
+  });
+
+  // Init
+  let savedTheme = "dark";
+  try{ savedTheme = localStorage.getItem(THEME_KEY) || "dark"; }catch(e){}
+  applyTheme(savedTheme);
+  renderPool();
+  updateBackBtnVisibility();
+  let savedCollapse = "0";
+  try{ savedCollapse = localStorage.getItem(POOL_COLLAPSE_KEY) || "0"; }catch(e){}
+  setPoolCollapse(savedCollapse === "1");
+})();
+</script>
+</body>
+</html>
