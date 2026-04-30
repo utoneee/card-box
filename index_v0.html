@@ -879,12 +879,16 @@
 
   $("exportBtn").addEventListener("click", ()=>{
     if(pool.length === 0 && !customBack){ showToast("沒有可匯出的內容"); return; }
+    const today = new Date().toISOString().slice(0,10).replace(/-/g,"");
+    const input = prompt("請輸入匯出檔名（不含副檔名）：", `Card-box-${today}`);
+    if(input === null) return;
+    const filename = (input.trim() || "gacha_cards") + ".json";
     const data = { pool: pool, back: customBack };
     const blob = new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "gacha_cards.json";
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
   });
