@@ -24,6 +24,7 @@
     --shadow:0 10px 30px rgba(0,0,0,0.5);
     --stars-opacity:0.6;
     --pool-item-bg:#1a1538;
+    --card-front-bg:#1a1538; /* #17 */
   }
   html[data-theme="light"]{
     --bg-1:#d4cdbe;
@@ -43,6 +44,7 @@
     --shadow:0 8px 22px rgba(40,32,55,0.12);
     --stars-opacity:0;
     --pool-item-bg:#ece5d4;
+    --card-front-bg:#fff8e8; /* #17 */
   }
 
   *{box-sizing:border-box;margin:0;padding:0}
@@ -130,6 +132,14 @@
     backdrop-filter:blur(8px);
     transition:background .4s ease, border-color .4s ease;
   }
+  /* #10: drag-over visual feedback */
+  .panel.drag-over{
+    border-color:var(--accent);
+    background:rgba(212,175,55,0.06);
+  }
+  html[data-theme="light"] .panel.drag-over{
+    background:rgba(107,77,16,0.06);
+  }
   .controls-row{
     display:flex;
     flex-wrap:wrap;
@@ -190,7 +200,7 @@
   html[data-theme="light"] .draw-btn{
     color:#fff8e8;
   }
-  .draw-btn:hover{
+  .draw-btn:hover:not(:disabled){ /* #14: only hover when not disabled */
     transform:translateY(-2px);
     box-shadow:0 4px 28px var(--glow);
   }
@@ -248,6 +258,16 @@
     cursor:pointer;
     animation:float 4s ease-in-out infinite;
   }
+  /* #8: pause float animation after flip */
+  .card.flipped{
+    animation-play-state:paused;
+  }
+  /* #21: keyboard focus style */
+  .card:focus{
+    outline:2px solid var(--accent);
+    outline-offset:4px;
+    border-radius:14px;
+  }
   @keyframes float{
     0%,100%{transform:translateY(0)}
     50%{transform:translateY(-12px)}
@@ -262,6 +282,7 @@
   }
   .card .front{
     opacity:0;
+    background:var(--card-front-bg); /* #17: use CSS variable */
   }
   .card.flipped .back{
     opacity:0;
@@ -304,12 +325,6 @@
     font-size:60px;
     color:var(--back-symbol);
     text-shadow:0 0 20px var(--glow);
-  }
-  .card .front{
-    background:#1a1538;
-  }
-  html[data-theme="light"] .card .front{
-    background:#fff8e8;
   }
   .card .front img{
     width:100%;
@@ -495,6 +510,59 @@
   }
   .toast.show{opacity:1}
 
+  /* #11: Custom export filename modal */
+  .modal-backdrop{
+    position:fixed;inset:0;
+    background:rgba(0,0,0,0.55);
+    display:flex;align-items:center;justify-content:center;
+    z-index:300;
+    opacity:0;
+    transition:opacity .2s;
+    pointer-events:none;
+  }
+  .modal-backdrop.show{
+    opacity:1;
+    pointer-events:all;
+  }
+  .modal-box{
+    background:var(--bg-2);
+    border:1px solid var(--panel-border);
+    border-radius:14px;
+    padding:28px 28px 22px;
+    min-width:300px;
+    max-width:90vw;
+    box-shadow:0 8px 32px rgba(0,0,0,0.4);
+    display:flex;flex-direction:column;gap:14px;
+  }
+  .modal-title{
+    font-size:15px;
+    color:var(--accent-soft);
+    letter-spacing:2px;
+  }
+  .modal-input{
+    background:var(--inner-bg);
+    border:1px solid var(--panel-border);
+    border-radius:8px;
+    color:var(--text);
+    font-family:inherit;
+    font-size:14px;
+    padding:10px 14px;
+    outline:none;
+    transition:border-color .2s;
+    width:100%;
+  }
+  .modal-input:focus{border-color:var(--accent);}
+  .modal-input-hint{
+    font-size:11px;
+    color:var(--muted);
+    margin-top:-8px;
+  }
+  .modal-btns{
+    display:flex;
+    gap:10px;
+    justify-content:flex-end;
+  }
+
   /* Footer */
   footer{
     text-align:center;
@@ -528,7 +596,7 @@
 </head>
 <body>
 <header>
-  <button class="theme-toggle" id="themeToggle" title="切換主題">☀</button>
+  <button type="button" class="theme-toggle" id="themeToggle" title="切換主題">☀</button><!-- #19 -->
   <h1>✦ 簡單的牌卡盒 ✦</h1>
   <p>- 實現抽卡自由 -</p>
 </header>
@@ -537,13 +605,13 @@
   <div class="panel">
     <div class="controls-row">
       <div class="spread-group" id="spreadGroup">
-        <button class="spread-btn active" data-count="1">抽 1 張</button>
-        <button class="spread-btn" data-count="2">抽 2 張</button>
-        <button class="spread-btn" data-count="3">抽 3 張</button>
+        <button type="button" class="spread-btn active" data-count="1">抽 1 張</button><!-- #19 -->
+        <button type="button" class="spread-btn" data-count="2">抽 2 張</button>
+        <button type="button" class="spread-btn" data-count="3">抽 3 張</button>
       </div>
     </div>
     <div class="controls-row">
-      <button class="draw-btn" id="drawBtn">抽　牌</button>
+      <button type="button" class="draw-btn" id="drawBtn" disabled>抽　牌</button><!-- #14 #19 -->
     </div>
   </div>
 
@@ -551,23 +619,23 @@
     <div class="empty-hint">請先在下方加入你的卡片，然後點「抽牌」</div>
   </div>
 
-  <div class="panel">
+  <div class="panel" id="poolPanel">
     <div class="pool-header">
       <div class="pool-title-row">
-        <button class="pool-toggle" id="poolToggle" title="收合">▾</button>
+        <button type="button" class="pool-toggle" id="poolToggle" title="收合">▾</button><!-- #19 -->
         <span class="pool-title">牌組</span>
         <span class="pool-count" id="poolCount">0 張</span>
       </div>
       <div class="pool-actions">
-        <button class="ghost-btn" id="uploadBtn">＋ 加入圖片</button>
-        <button class="ghost-btn" id="backBtn">自訂牌背</button>
-        <button class="ghost-btn" id="backResetBtn" style="display:none">移除自訂牌背</button>
-        <button class="ghost-btn" id="exportBtn">匯出設定</button>
-        <button class="ghost-btn" id="importBtn">匯入設定</button>
-        <button class="ghost-btn" id="clearBtn">清空</button>
+        <button type="button" class="ghost-btn" id="uploadBtn">＋ 加入圖片</button>
+        <button type="button" class="ghost-btn" id="backBtn">自訂牌背</button>
+        <button type="button" class="ghost-btn" id="backResetBtn" style="display:none">移除自訂牌背</button>
+        <button type="button" class="ghost-btn" id="exportBtn">⬆ 匯出設定</button><!-- #22 -->
+        <button type="button" class="ghost-btn" id="importBtn">⬇ 匯入設定</button><!-- #22 -->
+        <button type="button" class="ghost-btn" id="clearBtn">清空</button>
         <input type="file" id="fileInput" accept="image/*" multiple>
         <input type="file" id="backInput" accept="image/*">
-        <input type="file" id="importInput" accept="application/json">
+        <input type="file" id="importInput" accept="application/json,.json"><!-- #20 -->
       </div>
     </div>
     <div class="pool-collapsible" id="poolCollapsible">
@@ -584,6 +652,19 @@
 <div class="theme-overlay" id="themeOverlay"></div>
 <div class="toast" id="toast"></div>
 
+<!-- #11: Export filename modal (replaces prompt()) -->
+<div class="modal-backdrop" id="exportModal" role="dialog" aria-modal="true" aria-labelledby="exportModalTitle">
+  <div class="modal-box">
+    <div class="modal-title" id="exportModalTitle">⬆ 匯出設定</div>
+    <input type="text" class="modal-input" id="exportFilenameInput" placeholder="Card-box-YYYYMMDD" autocomplete="off">
+    <div class="modal-input-hint">不含副檔名，留空則使用預設名稱</div>
+    <div class="modal-btns">
+      <button type="button" class="ghost-btn" id="exportModalCancel">取消</button>
+      <button type="button" class="ghost-btn" id="exportModalConfirm">確認匯出</button>
+    </div>
+  </div>
+</div>
+
 <script>
 (function(){
   // 共享版：不持久化牌組與牌背（每次開啟為空）；保留主題與收合偏好
@@ -598,6 +679,7 @@
   let pool = [];
   let customBack = null;
   let drawCount = 1;
+  let toastTimer = null; // #15: scoped, not on DOM element
 
   const $ = id => document.getElementById(id);
   const stage = $("stage");
@@ -606,12 +688,13 @@
   const drawBtn = $("drawBtn");
   const toast = $("toast");
   const backResetBtn = $("backResetBtn");
+  const poolPanel = $("poolPanel");
 
   function showToast(msg){
     toast.textContent = msg;
     toast.classList.add("show");
-    clearTimeout(toast._t);
-    toast._t = setTimeout(()=>toast.classList.remove("show"), 2200);
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=>toast.classList.remove("show"), 2200);
   }
 
   // ===== Helpers =====
@@ -619,6 +702,10 @@
     return String(s).replace(/[&<>"']/g, c => ({
       "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
     }[c]));
+  }
+  // #2: validate that a value is a safe data:image/ URL
+  function isDataImageUrl(s){
+    return typeof s === "string" && /^data:image\/[a-zA-Z0-9.+-]+;base64,/.test(s);
   }
   function fileToDataURL(file){
     return new Promise((resolve,reject)=>{
@@ -640,6 +727,7 @@
   // ===== Pool =====
   function renderPool(){
     poolCount.textContent = pool.length + " 張";
+    drawBtn.disabled = pool.length === 0; // #14: reflect disabled state
     if(pool.length === 0){
       poolGrid.innerHTML = '<div class="pool-empty" style="grid-column:1/-1">尚未加入任何卡片</div>';
       return;
@@ -648,11 +736,22 @@
     pool.forEach(card => {
       const el = document.createElement("div");
       el.className = "pool-item";
-      el.innerHTML = `
-        <img src="${card.src}" alt="">
-        <div class="name">${escapeHtml(card.name)}</div>
-        <button class="remove" data-id="${card.id}" title="移除">×</button>
-      `;
+      // #1: DOM API instead of innerHTML to prevent XSS
+      const img = document.createElement("img");
+      img.src = card.src;
+      img.alt = card.name; // #13
+      const nameDiv = document.createElement("div");
+      nameDiv.className = "name";
+      nameDiv.textContent = card.name;
+      const removeBtn = document.createElement("button");
+      removeBtn.type = "button"; // #19
+      removeBtn.className = "remove";
+      removeBtn.dataset.id = card.id;
+      removeBtn.title = "移除";
+      removeBtn.textContent = "×";
+      el.appendChild(img);
+      el.appendChild(nameDiv);
+      el.appendChild(removeBtn);
       poolGrid.appendChild(el);
     });
   }
@@ -692,6 +791,8 @@
       }
       return out;
     }
+    // #5: warn user that duplicates will appear
+    showToast("牌池數量不足，本次含重複牌");
     const out = [];
     for(let i=0;i<n;i++) out.push(pool[Math.floor(Math.random()*pool.length)]);
     return out;
@@ -707,28 +808,61 @@
     const ratio = card.ratio || (2/3);
     const h = cardHeight();
     const w = Math.round(h * ratio);
-    const backStyle = customBack
-      ? `style="background-image:url('${customBack}')"`
-      : "";
-    const backClass = customBack ? "face back has-image" : "face back";
-    wrap.innerHTML = `
-      <div class="card-label">${label || ""}</div>
-      <div class="card" style="width:${w}px;height:${h}px">
-        <div class="${backClass}" ${backStyle}><div class="back-symbol"></div></div>
-        <div class="face front"><img src="${card.src}" alt=""></div>
-      </div>
-      <div class="card-name">${escapeHtml(card.name)}</div>
-    `;
+
+    // label
+    const labelEl = document.createElement("div");
+    labelEl.className = "card-label";
+    labelEl.textContent = label || "";
+
+    // card
+    const cardEl = document.createElement("div");
+    cardEl.className = "card";
+    cardEl.style.width = w + "px";
+    cardEl.style.height = h + "px";
+    cardEl.tabIndex = 0; // #21: keyboard accessible
+
+    // back face
+    const backEl = document.createElement("div");
+    backEl.className = customBack ? "face back has-image" : "face back";
+    if(customBack && isDataImageUrl(customBack)){ // #1: validate before use
+      backEl.style.backgroundImage = "url('" + customBack + "')";
+    }
+    const backSymbol = document.createElement("div");
+    backSymbol.className = "back-symbol";
+    backEl.appendChild(backSymbol);
+
+    // front face
+    const frontEl = document.createElement("div");
+    frontEl.className = "face front";
+    const img = document.createElement("img"); // #1: DOM API, no innerHTML
+    img.src = card.src;
+    img.alt = card.name; // #13
+    frontEl.appendChild(img);
+
+    cardEl.appendChild(backEl);
+    cardEl.appendChild(frontEl);
+
+    // card name
+    const nameEl = document.createElement("div");
+    nameEl.className = "card-name";
+    nameEl.textContent = card.name;
+
+    wrap.appendChild(labelEl);
+    wrap.appendChild(cardEl);
+    wrap.appendChild(nameEl);
     return wrap;
   }
 
   // ===== Sparkles =====
+  let activeSparkles = 0;
+  const MAX_SPARKLES = 60; // #16: cap total concurrent sparkles
   function spawnSparkles(cardEl){
     const rect = cardEl.getBoundingClientRect();
     const cx = rect.left + rect.width/2;
     const cy = rect.top + rect.height/2;
     const reach = Math.max(rect.width, rect.height) * 0.7;
-    const count = 22;
+    const count = Math.min(22, MAX_SPARKLES - activeSparkles);
+    if(count <= 0) return;
     for(let i=0;i<count;i++){
       const s = document.createElement("div");
       s.className = "sparkle";
@@ -738,6 +872,7 @@
       s.style.width = size + "px";
       s.style.height = size + "px";
       document.body.appendChild(s);
+      activeSparkles++;
       const angle = Math.random()*Math.PI*2;
       const dist = reach * (0.4 + Math.random()*0.7);
       const dx = Math.cos(angle)*dist;
@@ -755,7 +890,7 @@
         easing:"cubic-bezier(.2,.6,.3,1)",
         fill:"forwards"
       });
-      setTimeout(()=> s.remove(), duration + delay + 100);
+      setTimeout(()=>{ s.remove(); activeSparkles--; }, duration + delay + 100);
     }
   }
 
@@ -773,13 +908,22 @@
       const wrap = buildCard(card, labels[idx]);
       stage.appendChild(wrap);
       const cardEl = wrap.querySelector(".card");
-      cardEl.addEventListener("click", function flip(){
+      function flipCard(){
         if(cardEl.classList.contains("flipped")) return;
-        cardEl.classList.add("flipped");
+        cardEl.classList.add("flipped"); // #8: CSS rule pauses float animation
         wrap.classList.add("revealed");
         spawnSparkles(cardEl);
-        cardEl.removeEventListener("click", flip);
-      });
+        cardEl.removeEventListener("click", flipCard);
+        cardEl.removeEventListener("keydown", handleKey);
+      }
+      function handleKey(e){ // #21: Enter / Space to flip
+        if(e.key === "Enter" || e.key === " "){
+          e.preventDefault();
+          flipCard();
+        }
+      }
+      cardEl.addEventListener("click", flipCard);
+      cardEl.addEventListener("keydown", handleKey);
     });
   }
 
@@ -795,12 +939,15 @@
     const next = cur === "dark" ? "light" : "dark";
     overlay.classList.add("show");
     setTimeout(()=>{
-      applyTheme(next);
-      requestAnimationFrame(()=>{
+      try{
+        applyTheme(next);
+      }finally{ // #6: always remove overlay even if applyTheme throws
         requestAnimationFrame(()=>{
-          overlay.classList.remove("show");
+          requestAnimationFrame(()=>{
+            overlay.classList.remove("show");
+          });
         });
-      });
+      }
     }, 520);
   }
 
@@ -829,13 +976,40 @@
     setPoolCollapse(!wrap.classList.contains("collapsed"));
   }
 
+  // ===== Export modal (#11) =====
+  function openExportModal(){
+    const today = new Date().toISOString().slice(0,10).replace(/-/g,"");
+    const input = $("exportFilenameInput");
+    input.value = `Card-box-${today}`;
+    $("exportModal").classList.add("show");
+    setTimeout(()=>{ input.focus(); input.select(); }, 50);
+  }
+  function closeExportModal(){
+    $("exportModal").classList.remove("show");
+  }
+  function doExport(){
+    const input = $("exportFilenameInput");
+    const today = new Date().toISOString().slice(0,10).replace(/-/g,"");
+    const filename = (input.value.trim() || `Card-box-${today}`) + ".json";
+    closeExportModal();
+    const data = { pool: pool, back: customBack };
+    const blob = new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   // ===== Events =====
   $("spreadGroup").addEventListener("click", e => {
     const btn = e.target.closest(".spread-btn");
     if(!btn) return;
     document.querySelectorAll(".spread-btn").forEach(b=>b.classList.remove("active"));
     btn.classList.add("active");
-    drawCount = parseInt(btn.dataset.count, 10);
+    const parsed = parseInt(btn.dataset.count, 10);
+    drawCount = Number.isFinite(parsed) && parsed > 0 ? parsed : 1; // #7: guard NaN
   });
   drawBtn.addEventListener("click", draw);
 
@@ -879,21 +1053,22 @@
     renderPool();
   });
 
+  // Export
   $("exportBtn").addEventListener("click", ()=>{
     if(pool.length === 0 && !customBack){ showToast("沒有可匯出的內容"); return; }
-    const today = new Date().toISOString().slice(0,10).replace(/-/g,"");
-    const input = prompt("請輸入匯出檔名（不含副檔名）：", `Card-box-${today}`);
-    if(input === null) return;
-    const filename = (input.trim() || "gacha_cards") + ".json";
-    const data = { pool: pool, back: customBack };
-    const blob = new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
+    openExportModal();
   });
+  $("exportModalCancel").addEventListener("click", closeExportModal);
+  $("exportModalConfirm").addEventListener("click", doExport);
+  $("exportFilenameInput").addEventListener("keydown", e => {
+    if(e.key === "Enter") doExport();
+    if(e.key === "Escape") closeExportModal();
+  });
+  $("exportModal").addEventListener("click", e => {
+    if(e.target.id === "exportModal") closeExportModal(); // close on backdrop click
+  });
+
+  // Import
   $("importBtn").addEventListener("click", ()=> $("importInput").click());
   $("importInput").addEventListener("change", async e => {
     const file = e.target.files[0];
@@ -901,12 +1076,26 @@
     try{
       const text = await file.text();
       const data = JSON.parse(text);
-      if(Array.isArray(data)){
-        pool = data.filter(x => x && x.src && x.name);
-      }else{
-        pool = (data.pool || []).filter(x => x && x.src && x.name);
-        customBack = data.back || null;
+      // #12: confirm before overwriting existing pool
+      if(pool.length > 0 && !confirm(`目前牌組有 ${pool.length} 張卡片，匯入將會覆蓋。確定繼續？`)){
+        e.target.value = "";
+        return;
       }
+      let newPool, newBack = null;
+      if(Array.isArray(data)){
+        // #2: only accept valid data:image/ URLs
+        newPool = data.filter(x => x && typeof x.name === "string" && isDataImageUrl(x.src));
+      }else{
+        newPool = (data.pool || []).filter(x => x && typeof x.name === "string" && isDataImageUrl(x.src));
+        newBack = (isDataImageUrl(data.back)) ? data.back : null; // #2
+      }
+      // #3 #9: ensure every card has a valid id
+      newPool = newPool.map(c => ({
+        ...c,
+        id: (typeof c.id === "string" && c.id) ? c.id : (Date.now() + "_" + Math.random().toString(36).slice(2,8))
+      }));
+      pool = newPool;
+      customBack = newBack;
       for(const c of pool){
         if(!c.ratio) c.ratio = await imageRatio(c.src);
       }
@@ -922,10 +1111,23 @@
   $("themeToggle").addEventListener("click", toggleTheme);
   $("poolToggle").addEventListener("click", togglePoolCollapse);
 
-  // Drag & drop
+  // #10: Drag & drop with visual feedback on pool panel
+  let dragCounter = 0;
+  window.addEventListener("dragenter", e => {
+    if(e.dataTransfer && e.dataTransfer.types && e.dataTransfer.types.includes("Files")){
+      dragCounter++;
+      poolPanel.classList.add("drag-over");
+    }
+  });
+  window.addEventListener("dragleave", () => {
+    dragCounter = Math.max(0, dragCounter - 1);
+    if(dragCounter === 0) poolPanel.classList.remove("drag-over");
+  });
   window.addEventListener("dragover", e => e.preventDefault());
   window.addEventListener("drop", e => {
     e.preventDefault();
+    dragCounter = 0;
+    poolPanel.classList.remove("drag-over");
     if(e.dataTransfer.files.length > 0) addFiles(e.dataTransfer.files);
   });
 
